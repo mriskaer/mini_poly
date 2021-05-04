@@ -1,11 +1,16 @@
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+import operator
+from sklearn.metrics import mean_squared_error, r2_score
 from DataClean import *
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
+from datetime import datetime
 
 # Read csv files no paths pwease! Just keep data in seperate data folder
-vacdata = pd.read_csv('data/country_vaccinations.csv')
-popdata = pd.read_csv('data/population_by_country_2020.csv')
+vacdata = pd.read_csv(r'C:\Users\lucas\Desktop\Data science & visualization\mini_poly\data\country_vaccinations.csv')
+popdata = pd.read_csv(r'C:\Users\lucas\Desktop\Data science & visualization\mini_poly\data\population_by_country_2020.csv')
 
 #cleanup
 
@@ -44,26 +49,37 @@ for country in vacdata['country'].unique():
 # merge datasets
 mergedata = pd.merge(vacdata, popdata_new)
 
+#newDate = [datetime.date(mergedata['date'].min()), datetime.date(mergedata['data'].max())]
+#print(newDate)
 spec_country = mergedata[mergedata.country == 'Denmark']
 spec_country['x'] = np.arange(len(spec_country))
 
 x = spec_country['x']
 y = spec_country['people_fully_vaccinated']
+print(mergedata.head(5))
 
-model = np.poly1d(np.polyfit(x, y, 2))
-line = np.linspace(0, 104, 100) #last value = precision
+# transforming the data to include another axis
+x = x[:, np.newaxis]
+y = y[:, np.newaxis]
 
-day = model(30)
-prediction = model(spec_country['population'])
+#print(spec_country['x'].max)
 
-#if people_fully_vaccinated == population:
-#print(date)
+polynomial_features= PolynomialFeatures(degree=2)
+x_poly = polynomial_features.fit_transform(x)
 
-print("Prediction:")
-print("At day 30, this many people will be fully vaccinated: ", prediction)
-#print("The country has this many citizens: ", spec_country['population'])
-print("We know this, with certainty from 0-1: ", r2_score(y, model(x)))
+model = LinearRegression()
+model.fit(x_poly, y)
+y_poly_pred = model.predict(x_poly)
 
-plt.scatter(x, y)
-plt.plot(line, model(line))
+rmse = np.sqrt(mean_squared_error(y,y_poly_pred))
+r2 = r2_score(y,y_poly_pred)
+print(rmse)
+print(r2)
+
+plt.scatter(x, y, s=10)
+# sort the values of x before line plot
+sort_axis = operator.itemgetter(0)
+sorted_zip = sorted(zip(x,y_poly_pred), key=sort_axis)
+x, y_poly_pred = zip(*sorted_zip)
+plt.plot(x, y_poly_pred, color='m')
 plt.show()
